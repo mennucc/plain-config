@@ -192,7 +192,7 @@ def write_config(infofile, db, sdb=[], rewrite_old = False):
     if isinstance(infofile, (str, bytes, Path)): 
         with open(infofile,'w') as F:
             mychmod(infofile)
-            write_config(F, db, sdb)
+            write_config(F, db, sdb, rewrite_old)
         return
     F = infofile
     #
