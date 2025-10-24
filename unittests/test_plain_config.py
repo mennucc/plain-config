@@ -48,8 +48,8 @@ class TestPlainConfig(unittest.TestCase):
         """Test reading/writing plain string values"""
         config_file = self.get_test_file()
         data = {
-            'hostname': 'example.com',
-            'username': 'admin',
+            'hostname': ' example.com',
+            'username': 'admin  ',
             'path': '/var/log/app.log'
         }
 
