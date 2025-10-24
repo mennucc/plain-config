@@ -422,14 +422,32 @@ class TestModifierCombinations(unittest.TestCase):
         """Test /64p modifier combination (base64 + pickle)"""
         config_file = self.get_test_file()
 
-        # Write complex object (will use /64p automatically)
+        # Write complex object (will use /r automatically)
+        data = {'complex': {'nested': [1, 2, Exception]}}
+        plain_config.write_config(config_file, data)
+        
+        # Verify file contains /64p
+        with open(config_file) as f:
+            content = f.read()
+        self.assertIn('/64p=', content)
+
+        # Read back
+        loaded_data, _ = plain_config.read_config(config_file)
+        self.assertEqual(loaded_data, data)
+
+
+    def test_ast_combination(self):
+        """Test /r modifier combination (will use ast.literal_eval)"""
+        config_file = self.get_test_file()
+
+        # Write complex object (will use /r automatically)
         data = {'complex': {'nested': [1, 2, 3]}}
         plain_config.write_config(config_file, data)
 
         # Verify file contains /64p
         with open(config_file) as f:
             content = f.read()
-        self.assertIn('/64p=', content)
+        self.assertIn('/r=', content)
 
         # Read back
         loaded_data, _ = plain_config.read_config(config_file)

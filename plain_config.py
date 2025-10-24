@@ -74,16 +74,34 @@ Functions
 
 """
 
+__all__ = ('write_config', 'read_config')
+
 import os
 import pickle
 import base64
 import copy
 import logging
+import ast
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
 default_chmod = 0o600
+
+_eval_safe_item = (str, bytes, int, float, bool)
+_eval_safe_recurse = (tuple, list, set)
+
+def _check_eval_safe(S):
+    if S is None or  any (isinstance(S, t) for t in _eval_safe_item):
+        return True
+    if isinstance(S, dict):
+        return all( (_check_eval_safe(k) and  _check_eval_safe(v))
+                    for k, v in S.items())
+    if any (isinstance(S, t) for t in _eval_safe_recurse):
+        return all(  _check_eval_safe(v)    for v in S)
+    return False
+
+
 
 def mychmod(f, mode=default_chmod):
     """Set file permissions, with error handling."""
@@ -196,8 +214,9 @@ def write_config(infofile, db, sdb=[], rewrite_old = False):
             F.write('{}/f={!r}\n'.format(k,v))
         elif isinstance(v,bytes):
             F.write('{}/32={}\n'.format(k, base64.b32encode(v).decode('ascii')))
-        #elif v == eval(repr(v)):
-        #    F.write('{}/f={!r}\n'.format(k,v))
+        elif _check_eval_safe(v):
+            F.write('{}/r={!r}\n'.format(k,v))
+            # will use ast.literal_eval for decoding
         else:
             F.write('{}/64p={}\n'.format(k, base64.b64encode(pickle.dumps(v)).decode('ascii')))
     #
@@ -357,7 +376,7 @@ def _read_config(infofile):
                     value = float(value)
                     m = m[1:]
                 elif m.startswith('r'):
-                    value = eval(value)
+                    value = ast.literal_eval(value)
                     m = m[1:]
                 elif m.startswith('32'):
                     value = base64.b32decode(B(value))

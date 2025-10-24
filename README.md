@@ -74,7 +74,7 @@ port/i=8080
 timeout/f=30.5
 debug/r=True
 api_key/32=ONSWG4TFMRSW4ZBANVQWY3B5
-tags/64p=gASVHgAAAAAAAABdlCiMA3dlYpSMA2FwaZSMCnByb2R1Y3Rpb26UZS4=
+tags/r=['web', 'api', 'production']
 ```
 
 ## File Format
@@ -99,13 +99,13 @@ When writing, `plain-config` automatically selects the appropriate type modifier
 | (none) | `str` | Plain string | `name=John` |
 | `/i` | `int` | Integer | `port/i=8080` |
 | `/f` | `float` | Float | `pi/f=3.14159` |
-| `/r` | literal | Python literal (True/False/None) | `debug/r=True` |
+| `/r` | literal/nested | Python literals using `ast.literal_eval()` - supports bool, None, numbers, strings, bytes, tuples, lists, dicts, sets with safe nesting | `debug/r=True` or `data/r={'nested': [1, 2, 3]}` |
 | `/s` | `str` | String (with UTF-8 encoding) | `text/s=hello` |
 | `/b` | `bytes` | Bytes (UTF-8 encoded) | `data/b=binary` |
 | `/32` | `bytes` | Base32 decoded | `key/32=MZXW6===` |
 | `/64` | `bytes` | Base64 decoded | `data/64=aGVsbG8=` |
 | `/p` | object | Unpickled Python object | `obj/p=...` |
-| `/64p` | object | Base64 + pickle (complex objects) | `list/64p=...` |
+| `/64p` | object | Base64 + pickle (for objects that can't use `/r`) | `list/64p=...` |
 
 ### Automatic Type Selection
 
@@ -120,9 +120,14 @@ When writing configuration, `plain-config` automatically chooses the best encodi
     'boolean': True,                     # → boolean/r=True
     'none_value': None,                  # → none_value/r=None
     'binary': b'bytes',                  # → binary/32=MJQXGZIK
-    'complex': {'nested': [1, 2, 3]}    # → complex/64p=...
+    'complex': {'nested': [1, 2, 3]},   # → complex/r={'nested': [1, 2, 3]}
+    'with_class': {'obj': MyClass()}    # → with_class/64p=... (uses pickle)
 }
 ```
+
+**Note**: Nested structures (dicts, lists, tuples, sets) containing only safe types (str, bytes, int, float, bool, None)
+are encoded using `/r` and decoded with `ast.literal_eval()` for security.
+Objects that can't be represented this way (custom classes, functions, etc.) fall back to `/64p` , that is, base64 encoded pickle.
 
 ## API Reference
 
@@ -265,7 +270,7 @@ print(oct(stat.st_mode)[-3:])  # Output: 600
 | Binary data | ✅ Native | ⚠️ Base64 | ⚠️ Manual | ❌ No | ❌ No |
 | Dependencies | ✅ None | ✅ stdlib | ❌ PyYAML | ✅ stdlib | ❌ tomli |
 | Structure preservation | ✅ Yes | ❌ No | ❌ No | ⚠️ Limited | ❌ No |
-| Complex objects | ✅ Pickle | ❌ No | ⚠️ Limited | ❌ No | ⚠️ Limited |
+| Complex objects | ✅ Safe literals + Pickle | ❌ No | ⚠️ Limited | ❌ No | ⚠️ Limited |
 
 ### Use Cases
 
@@ -285,8 +290,9 @@ print(oct(stat.st_mode)[-3:])  # Output: 600
 ## Security Considerations
 
 - **File permissions**: Config files are created with mode 0o600 (owner read/write only)
-- **Pickle usage**: The `/p` modifier uses `pickle` for complex objects. Only use with trusted config files
-- **Input validation**: For untrusted input, consider using the `/r` modifier which uses `ast.literal_eval()` instead of `eval()`
+- **Safe by default**: The `/r` modifier uses `ast.literal_eval()` which only evaluates Python literals (strings, numbers, tuples, lists, dicts, booleans, None, bytes). This is safe for untrusted input.
+- **Pickle usage**: The `/p` and `/64p` modifiers use `pickle` for objects that can't be represented as literals (custom classes, functions, etc.). Only use pickle-encoded config files from trusted sources, as pickle can execute arbitrary code when deserializing malicious data.
+- **Automatic safety**: When writing config, plain-config automatically prefers `/r` (safe) over `/64p` (pickle) whenever possible.
 
 ## Requirements
 
