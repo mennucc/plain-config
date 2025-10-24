@@ -390,6 +390,12 @@ class TestPlainConfig(unittest.TestCase):
         with self.assertRaises(AssertionError):
             plain_config.write_config(config_file, data)
 
+        # Keys must be string
+        data = {False : 'value'}
+        with self.assertRaises(AssertionError):
+            plain_config.write_config(config_file, data)
+
+
     def test_file_permissions(self):
         """Test that written files have correct permissions (0o600)"""
         config_file = self.get_test_file()

@@ -197,7 +197,7 @@ def write_config(infofile, db, sdb=[], rewrite_old = False):
     F = infofile
     #
     def write_k_v(k,v,F):
-        assert '=' not in k and '/' not in k
+        assert isinstance(k,str) and '=' not in k and '/' not in k
         if isinstance(v,str):
             if any( (ord(j)<32)  for j in v ):
                 v = v.encode('utf8')
