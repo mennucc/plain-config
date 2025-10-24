@@ -386,8 +386,10 @@ def _read_config(infofile):
                     m = m[2:]
                 else:
                     logger.error('error parsing line modifiers : %r', line)
+                    m = False
                     break
-            db[key] = value
+            if m == '':
+                db[key] = value
         except Exception as E:
             logger.warning('In info file %r error parsing  %r : %r', infofile, line, E)
     return db, sdb

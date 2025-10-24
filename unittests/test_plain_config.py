@@ -486,6 +486,13 @@ class TestModifierCombinations(unittest.TestCase):
         loaded_data, _ = plain_config.read_config(config_file)
         self.assertEqual(loaded_data, data)
 
+    def test_unknown_modifier(self):
+        F = io.StringIO('foobar/X=hello\n')
+        
+        data , structure = plain_config.read_config(F)
+        
+        self.assertEqual(data, {})
+
 
 if __name__ == '__main__':
     unittest.main()
