@@ -297,6 +297,15 @@ print(oct(stat.st_mode)[-3:])  # Output: 600
 
 MIT License - see [LICENSE](LICENSE) file for details
 
+## Tests
+
+The code is tested
+[using  *GitHub actions*](https://github.com/mennucc/plain_config/actions/workflows/test.yaml)
+inside an Ubuntu environment, for Python 3.8 up to 3.13 (but not yet with 3.14).
+
+![Test results](https://github.com/mennucc/plain_config/actions/workflows/test.yaml/badge.svg)
+
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
