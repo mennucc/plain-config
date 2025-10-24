@@ -110,7 +110,7 @@ def mychmod(f, mode=default_chmod):
     except Exception as E:
         logger.exception('Why cant I set chmod %r on %r', mode, f)
 
-def write_config(infofile, db, sdb=[], rewrite_old = False):
+def write_config(infofile, db, sdb=[], safe=True, rewrite_old = False):
     """
     Write configuration data to a file with automatic type encoding.
 
@@ -146,6 +146,9 @@ def write_config(infofile, db, sdb=[], rewrite_old = False):
 
         When provided, keys that were in the original file are written in their
         original positions, and comments/empty lines are preserved.
+
+    safe: bool
+        if False, allow pickling
 
     rewrite_old : bool, optional
         If True, keys in sdb that are not in db are written back using
@@ -192,7 +195,7 @@ def write_config(infofile, db, sdb=[], rewrite_old = False):
     if isinstance(infofile, (str, bytes, Path)): 
         with open(infofile,'w') as F:
             mychmod(infofile)
-            write_config(F, db, sdb, rewrite_old)
+            write_config(F, db, sdb, safe, rewrite_old)
         return
     F = infofile
     #
@@ -217,8 +220,10 @@ def write_config(infofile, db, sdb=[], rewrite_old = False):
         elif _check_eval_safe(v):
             F.write('{}/r={!r}\n'.format(k,v))
             # will use ast.literal_eval for decoding
-        else:
+        elif not safe:
             F.write('{}/64p={}\n'.format(k, base64.b64encode(pickle.dumps(v)).decode('ascii')))
+        else:
+            raise RuntimeError('cannot write {!r}, `safe` is True'.format(v))
     #
     db = copy.copy(db)
     # write keys that were in file, in same position
@@ -236,7 +241,7 @@ def write_config(infofile, db, sdb=[], rewrite_old = False):
         write_k_v(k,db[k],F)
 
 
-def read_config(infofile):
+def read_config(infofile, safe=True):
     """
     Read configuration data from a file with automatic type decoding.
 
@@ -250,6 +255,9 @@ def read_config(infofile):
         The configuration file to read from. Can be:
         - A file path (str, bytes, or Path): File will be opened and read
         - A file object or iterable: Must yield text lines
+
+    safe: bool
+        `True` by default; if False, allow  unpickling of /p keys; set to False only for trusted input
 
     Returns
     -------
@@ -321,11 +329,11 @@ def read_config(infofile):
     """
     if isinstance(infofile, (str,bytes, Path)):
         with open(infofile) as F:
-            db = _read_config(F)
+            db = _read_config(F, safe)
         return db
-    return  _read_config(infofile)
+    return  _read_config(infofile, safe)
 
-def _read_config(infofile):
+def _read_config(infofile, safe):
     " infofile must iterate to text lines; returns (db, sdb) where db are the extracted key,value, sdb is the structure of the file"
     def B(x): # to byte
         if isinstance(x, str):
@@ -351,6 +359,10 @@ def _read_config(infofile):
             sdb.append( (key, m, line_) )
             while m:
                 if m.startswith('p'):
+                    if safe:
+                        logger.error('cannot read %r, `safe` is True', line)
+                        m = False
+                        break
                     value = pickle.loads(B(value))
                     m = m[1:]
                 elif m.startswith('s'):

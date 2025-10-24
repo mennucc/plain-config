@@ -440,7 +440,11 @@ class TestModifierCombinations(unittest.TestCase):
 
         # Write complex object (will use /r automatically)
         data = {'complex': {'nested': [1, 2, Exception]}}
-        plain_config.write_config(config_file, data)
+        
+        with self.assertRaises(RuntimeError):
+            plain_config.write_config(config_file, data, safe=True)
+        
+        plain_config.write_config(config_file, data, safe=False)
         
         # Verify file contains /64p
         with open(config_file) as f:
@@ -448,7 +452,7 @@ class TestModifierCombinations(unittest.TestCase):
         self.assertIn('/64p=', content)
 
         # Read back
-        loaded_data, _ = plain_config.read_config(config_file)
+        loaded_data, _ = plain_config.read_config(config_file, safe=False)
         self.assertEqual(loaded_data, data)
 
 

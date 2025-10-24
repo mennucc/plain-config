@@ -107,6 +107,9 @@ When writing, `plain-config` automatically selects the appropriate type modifier
 | `/p` | object | Unpickled Python object | `obj/p=...` |
 | `/64p` | object | Base64 + pickle (for objects that can't use `/r`) | `list/64p=...` |
 
+Note that pickling/unpickling , that is, the '/p' modifier, will be performed only if `safe=False` is
+passed to the calls.
+
 ### Automatic Type Selection
 
 When writing configuration, `plain-config` automatically chooses the best encoding:
@@ -131,7 +134,7 @@ Objects that can't be represented this way (custom classes, functions, etc.) fal
 
 ## API Reference
 
-### `write_config(infofile, db, sdb=[], rewrite_old=False)`
+### `write_config(infofile, db, sdb=[], safe=True, rewrite_old=False)`
 
 Write configuration data to file with automatic type encoding.
 
@@ -139,6 +142,7 @@ Write configuration data to file with automatic type encoding.
 - `infofile`: File path (str/Path) or file object to write to
 - `db`: Dictionary of key-value pairs to write
 - `sdb`: Structure database from previous `read_config()` (preserves formatting)
+- `safe`:  if `False`, allow pickling
 - `rewrite_old`: If True, preserve keys in `sdb` not present in `db`
 
 **Example:**
@@ -147,12 +151,13 @@ config = {'host': 'localhost', 'port': 8080}
 plain_config.write_config('server.conf', config)
 ```
 
-### `read_config(infofile)`
+### `read_config(infofile, safe=True)`
 
 Read configuration data from file with automatic type decoding.
 
 **Parameters:**
 - `infofile`: File path (str/Path) or file object to read from
+- `safe`: if `False`, allow unpickling
 
 **Returns:**
 - `db`: Dictionary of decoded key-value pairs
@@ -290,9 +295,14 @@ print(oct(stat.st_mode)[-3:])  # Output: 600
 ## Security Considerations
 
 - **File permissions**: Config files are created with mode 0o600 (owner read/write only)
-- **Safe by default**: The `/r` modifier uses `ast.literal_eval()` which only evaluates Python literals (strings, numbers, tuples, lists, dicts, booleans, None, bytes). This is safe for untrusted input.
-- **Pickle usage**: The `/p` and `/64p` modifiers use `pickle` for objects that can't be represented as literals (custom classes, functions, etc.). Only use pickle-encoded config files from trusted sources, as pickle can execute arbitrary code when deserializing malicious data.
-- **Automatic safety**: When writing config, plain-config automatically prefers `/r` (safe) over `/64p` (pickle) whenever possible.
+- **Safe by default**: By default, both `read_config()` and `write_config()` use `safe=True`, which:
+  - **Reading**: Refuses to unpickle `/p` or `/64p` values (will skip them)
+  - **Writing**: Raises `RuntimeError` if a value cannot be safely encoded (requires `safe=False` to use pickle)
+  - Uses `ast.literal_eval()` for `/r` modifier, which only evaluates Python literals (strings, numbers, tuples, lists, dicts, booleans, None, bytes) - safe for untrusted input
+- **Pickle usage**: The `/p` and `/64p` modifiers use `pickle` for objects that can't be represented as literals (custom classes, functions, etc.). To enable pickle:
+  - Set `safe=False` when calling `read_config()` or `write_config()`
+  - Only use `safe=False` with config files from trusted sources, as pickle can execute arbitrary code when deserializing malicious data
+- **Automatic safety**: When writing config with `safe=True` (default), plain-config automatically prefers `/r` (safe) over `/64p` (pickle) whenever possible, and fails if pickle would be needed
 
 ## Requirements
 
