@@ -254,7 +254,7 @@ class TestPlainConfig(unittest.TestCase):
         plain_config.write_config(config_file, data)
 
         with open(config_file) as f:
-            loaded_data, structure = plain_config._read_config(f)
+            loaded_data, structure = plain_config.read_config(f)
 
         self.assertEqual(loaded_data, data)
 
