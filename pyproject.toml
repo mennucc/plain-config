@@ -1,0 +1,64 @@
+[build-system]
+requires = ["setuptools>=45", "wheel", "setuptools_scm>=6.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "plain-config"
+version = "0.1.0"
+description = "Simple human-readable configuration files with automatic type conversion"
+readme = "README.md"
+requires-python = ">=3.6"
+license = {text = "MIT"}
+authors = [
+    {name = "Andrea C G Mennucci", email = "mennucc1@debian.org"}
+]
+maintainers = [
+    {name = "Andrea C G Mennucci", email = "mennucc1@debian.org"}
+]
+keywords = [
+    "config",
+    "configuration",
+    "settings",
+    "ini",
+    "human-readable",
+    "plain-text",
+    "parser"
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.6",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: System :: Systems Administration",
+    "Topic :: Utilities",
+]
+
+[project.urls]
+Homepage = "https://github.com/mennucc/plain-config"
+Documentation = "https://github.com/mennucc/plain-config#readme"
+Repository = "https://github.com/mennucc/plain-config"
+"Bug Tracker" = "https://github.com/mennucc/plain-config/issues"
+
+[tool.setuptools]
+py-modules = ["plain_config"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["plain_config*"]
+exclude = ["unittests*", "*.tests", "*.tests.*", "tests.*", "tests"]
+
+[tool.pytest.ini_options]
+testpaths = ["unittests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
