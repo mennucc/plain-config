@@ -14,6 +14,7 @@ Tests all features of the plain configuration file format including:
 
 import os
 import sys
+import io
 import unittest
 import tempfile
 import shutil
@@ -401,6 +402,15 @@ class TestPlainConfig(unittest.TestCase):
             stat_info = os.stat(config_file)
             permissions = stat_info.st_mode & 0o777
             self.assertEqual(permissions, 0o600)
+
+
+    def test_string_io(self):
+        F = io.StringIO()
+        data = {'binary': b'test_bytes'}
+        plain_config.write_config(F, data)
+        F.seek(0)
+        loaded_data, _ = plain_config.read_config(F)
+        self.assertEqual(loaded_data, data)
 
 
 class TestModifierCombinations(unittest.TestCase):
