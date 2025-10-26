@@ -348,7 +348,7 @@ def _read_config(infofile, safe):
             sdb.append( (None, None, line_) )
             continue
         if '=' not in line:
-            logger.warning('In info file %r ignored line %r', infofile, line)
+            logger.warning('In file %r ignored line %r', infofile, line)
             sdb.append( (False, False, line_) )
             continue
         m = key = value = False
@@ -360,7 +360,7 @@ def _read_config(infofile, safe):
             while m:
                 if m.startswith('p'):
                     if safe:
-                        logger.error('cannot read %r, `safe` is True', line)
+                        logger.error('In file %r cannot read %r, `safe` is True', infofile, line)
                         m = False
                         break
                     value = pickle.loads(B(value))
@@ -371,7 +371,7 @@ def _read_config(infofile, safe):
                     elif isinstance(value, int):
                         value = str(value)
                     else:
-                        logger.warning('Cannot convert to string the value : %r', value)
+                        logger.warning('In file %r cannot convert to string the value : %r', infofile, value)
                     m = m[1:]
                 elif m.startswith('b'):
                     if isinstance(value, str):
@@ -379,7 +379,7 @@ def _read_config(infofile, safe):
                     #elif isinstance(value, int):
                     #    value = value.to_bytes(....)
                     else:
-                        logger.warning('Cannot convert to bytes the value : %r', value)
+                        logger.warning('In file %r cannot convert to bytes the value : %r', infofile, value)
                     m = m[1:]
                 elif m.startswith('i'):
                     value = int(value)
@@ -397,7 +397,7 @@ def _read_config(infofile, safe):
                     value = base64.b64decode(B(value))
                     m = m[2:]
                 else:
-                    logger.error('error parsing line modifiers : %r', line)
+                    logger.error('In file %r error parsing line modifiers : %r', infofile, line)
                     m = False
                     break
         #
