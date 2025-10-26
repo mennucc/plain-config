@@ -84,7 +84,7 @@ import logging
 import ast
 from pathlib import Path
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('plain-config')
 
 default_chmod = 0o600
 

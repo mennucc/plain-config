@@ -18,6 +18,7 @@ import io
 import unittest
 import tempfile
 import shutil
+import logging
 from pathlib import Path
 
 # Add parent directory to path if running standalone
@@ -28,6 +29,20 @@ if sourcedir not in sys.path:
 
 import plain_config
 
+logger = logging.getLogger('plain-config')
+
+class TestLogging(unittest.TestCase):
+    def test_log_messages(self):
+        with self.assertLogs(logger, level='INFO') as cm:
+            logger.info("Operation started")
+            logger.error("Something went wrong")
+        
+        # Check the output
+        self.assertEqual(cm.output, [
+            'INFO:plain-config:Operation started',
+            'ERROR:plain-config:Something went wrong'
+        ])
+        
 
 class TestPlainConfig(unittest.TestCase):
     """Test suite for plain_config module"""
@@ -495,10 +510,15 @@ class TestModifierCombinations(unittest.TestCase):
         content = badline + 'a/i=1\n'
         F = io.StringIO(content)
         
-        data , structure = plain_config.read_config(F)
+        with self.assertLogs(logger, level='ERROR') as cm:
+            data , structure = plain_config.read_config(F)
         
+        self.assertTrue(len(cm.output))
+        self.assertIn('error parsing line modifiers', cm.output[0])
         self.assertIn((False, False, badline), structure)
         self.assertEqual(data, {'a': 1})
+
+
 
 
 if __name__ == '__main__':
