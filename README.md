@@ -161,7 +161,10 @@ Read configuration data from file with automatic type decoding.
 
 **Returns:**
 - `db`: Dictionary of decoded key-value pairs
-- `sdb`: Structure database (for preserving format when rewriting)
+- `sdb`: Structure database (for preserving format when rewriting),
+   it is a list of triples `(key,value,line)`,
+   a comment line is represented by `(None,None,line)`,
+   a line that could not be parsed is represented by `(False,False,line)`.
 
 **Example:**
 ```python

@@ -491,11 +491,14 @@ class TestModifierCombinations(unittest.TestCase):
         self.assertEqual(loaded_data, data)
 
     def test_unknown_modifier(self):
-        F = io.StringIO('foobar/X=hello\n')
+        badline =  'foobar/X=hello\n'
+        content = badline + 'a/i=1\n'
+        F = io.StringIO(content)
         
         data , structure = plain_config.read_config(F)
         
-        self.assertEqual(data, {})
+        self.assertIn((False, False, badline), structure)
+        self.assertEqual(data, {'a': 1})
 
 
 if __name__ == '__main__':

@@ -356,7 +356,6 @@ def _read_config(infofile, safe):
             m=''
             if '/' in key:
                 key,m = key.split('/',1)
-            sdb.append( (key, m, line_) )
             while m:
                 if m.startswith('p'):
                     if safe:
@@ -402,6 +401,9 @@ def _read_config(infofile, safe):
                     break
             if m == '':
                 db[key] = value
+                sdb.append( (key, m, line_) )
+            else:
+                sdb.append( (False, False, line_) )
         except Exception as E:
             logger.warning('In info file %r error parsing  %r : %r', infofile, line, E)
     return db, sdb
