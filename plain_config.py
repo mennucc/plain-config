@@ -351,6 +351,7 @@ def _read_config(infofile, safe):
             logger.warning('In info file %r ignored line %r', infofile, line)
             sdb.append( (False, False, line_) )
             continue
+        m = key = value = False
         try:
             key,value = line.split('=',1)
             m=''
@@ -399,11 +400,12 @@ def _read_config(infofile, safe):
                     logger.error('error parsing line modifiers : %r', line)
                     m = False
                     break
-            if m == '':
-                db[key] = value
-                sdb.append( (key, m, line_) )
-            else:
-                sdb.append( (False, False, line_) )
+        #
         except Exception as E:
-            logger.warning('In info file %r error parsing  %r : %r', infofile, line, E)
-    return db, sdb
+            logger.error('In file %r error parsing  %r : %r', infofile, line, E)
+        if m == '' and key != False:
+            db[key] = value
+            sdb.append( (key, m, line_) )
+        else:
+            sdb.append( (False, False, line_) )
+    return db, sdb  

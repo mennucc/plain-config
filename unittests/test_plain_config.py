@@ -518,6 +518,18 @@ class TestModifierCombinations(unittest.TestCase):
         self.assertIn((False, False, badline), structure)
         self.assertEqual(data, {'a': 1})
 
+    def test_bad_content_for_modifier(self):
+        badline =  'foobar/i=hello\n'
+        content = badline + 'a/i=1\n'
+        F = io.StringIO(content)
+        
+        with self.assertLogs(logger, level='ERROR') as cm:
+            data , structure = plain_config.read_config(F)
+        
+        self.assertTrue(len(cm.output))
+        self.assertIn('error parsing', cm.output[0])
+        self.assertIn((False, False, badline), structure)
+        self.assertEqual(data, {'a': 1})
 
 
 
