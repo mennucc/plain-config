@@ -202,11 +202,15 @@ def write_config(infofile, db, sdb=[], safe=True, rewrite_old = False):
     def write_k_v(k,v,F):
         assert isinstance(k,str) and '=' not in k and '/' not in k
         if isinstance(v,str):
-            if any( (ord(j)<32)  for j in v ):
-                v = v.encode('utf8')
-                v = base64.b64encode(v)
-                v = v.decode()
-                F.write('{}/64s={}\n'.format(k, v))
+            if any( (ord(j)<32) for j in v ):
+                if any( (ord(j) <32 and ord(j) not in (9, 13, 10)) for j in v ):
+                    # trigger on control chars not representable as '\t\r\n'
+                    v = v.encode('utf8')
+                    v = base64.b64encode(v)
+                    v = v.decode()
+                    F.write('{}/64s={}\n'.format(k, v))
+                else:
+                    F.write('{}/r={}\n'.format(k, repr(v)))
             else:
                 F.write('{}={}\n'.format(k,v))
         elif isinstance(v, bool) or v is None:

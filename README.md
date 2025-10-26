@@ -116,15 +116,16 @@ When writing configuration, `plain-config` automatically chooses the best encodi
 
 ```python
 {
-    'simple_string': 'hello',           # → simple_string=hello
-    'multiline': 'line1\nline2',        # → multiline/64s=bGluZTEKbGluZTI=
+    'simple_string': 'hello',            # → simple_string=hello
+    'multiline': 'line1\nline2',         # → multiline/r='line1\nline2'
+    'pickleme':'forward \f backward \b', # → pickleme/64s=Zm9yd2FyZCAMIGJhY2t3YXJkIAg=
     'integer': 42,                       # → integer/i=42
     'float': 3.14,                       # → float/f=3.14
     'boolean': True,                     # → boolean/r=True
     'none_value': None,                  # → none_value/r=None
     'binary': b'bytes',                  # → binary/32=MJQXGZIK
-    'complex': {'nested': [1, 2, 3]},   # → complex/r={'nested': [1, 2, 3]}
-    'with_class': {'obj': MyClass()}    # → with_class/64p=... (uses pickle)
+    'complex': {'nested': [1, 2, 3]},    # → complex/r={'nested': [1, 2, 3]}
+    'with_class': {'obj': MyClass()}     # → with_class/64p=... (uses pickle)
 }
 ```
 

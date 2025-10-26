@@ -64,8 +64,9 @@ class TestPlainConfig(unittest.TestCase):
         config_file = self.get_test_file()
         data = {
             'hostname': ' example.com',
-            'username': 'admin  ',
-            'path': '/var/log/app.log'
+            'username': 'admin  \tfoobar\n',
+            'path': '/var/log/app.log',
+            'pickleme': 'forward \f backward \b'
         }
 
         plain_config.write_config(config_file, data)
