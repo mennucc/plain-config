@@ -110,6 +110,31 @@ def mychmod(f, mode=default_chmod):
     except Exception as E:
         logger.exception('Why cant I set chmod %r on %r', mode, f)
 
+def _is_ctrl(c):
+    """Return True if character c is a control character."""
+    if not c:
+        return False
+    if isinstance(c, str):
+        code = ord(c)
+    else:
+        code = c
+    assert  isinstance(code, int)
+    # C0 controls (0-31) and DEL (127) and C1 controls (128-159)
+    return (0x00 <= code <= 0x1F) or (0x7F <= code <= 0x9F)
+
+def _is_ctrl_but_rnc(c):
+    """Return True if character c is a control character, but not \r \t \n."""
+    if not c:
+        return False
+    if isinstance(c, str):
+        code = ord(c)
+    else:
+        code = c
+    assert  isinstance(code, int)
+    return ( (0x00 <= code <= 0x1F) and (code not in (9, 13, 10))) or (0x7F <= code <= 0x9F)
+
+
+
 def write_config(infofile, db, sdb=[], safe=True, rewrite_old = False):
     """
     Write configuration data to a file with automatic type encoding.
@@ -202,8 +227,8 @@ def write_config(infofile, db, sdb=[], safe=True, rewrite_old = False):
     def write_k_v(k,v,F):
         assert isinstance(k,str) and '=' not in k and '/' not in k
         if isinstance(v,str):
-            if any( (ord(j)<32) for j in v ):
-                if any( (ord(j) <32 and ord(j) not in (9, 13, 10)) for j in v ):
+            if any( _is_ctrl(j) for j in v ):
+                if any( _is_ctrl_but_rnc(j)  for j in v ):
                     # trigger on control chars not representable as '\t\r\n'
                     v = v.encode('utf8')
                     v = base64.b64encode(v)
