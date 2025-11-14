@@ -155,20 +155,21 @@ def _write_split(F, m, k, v, split_long_lines, continuation_chars):
         F.write(k + m + '='+ v + '\n')
         return
     m = '/C' + cont + m
-    #pre = (len(k) + len(m) + 2)
+    pre = (len(k) + len(m) + 2)
     F.write(k + m + '=')
-    while len(v) > split_long_lines:
-        l = split_long_lines
+    while (pre + len(v)) > split_long_lines:
+        l = max(split_long_lines - pre, 2)
         # find a nicer place where to split...
-        s = split_long_lines
-        e = split_long_lines * 5 // 6
-        if s > e and e > 3:
+        s = l
+        e = l * 3 // 4
+        if s > e and e > 2:
             for j in range(s, e, -1):
                 if v[j] in  ' ])},;-+\n\t':
                     l = j
                     break
         F.write(v[:l]+cont+'\n')
         v = v[l:]
+        pre = 0
     F.write(v + '\n')
 
 
