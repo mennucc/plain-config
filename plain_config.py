@@ -136,6 +136,7 @@ def _is_ctrl_but_rnc(c):
 funny_continuation_chars = r'\|⤸;↓↘→⟶⇒⇨⇩▼▽◢◣⤵║│┃┆┇┊┋∣⎟⎢⎥'
 
 def _write_split(F, m, k, v, split_long_lines, continuation_chars):
+    """Render a single line, adding `/C<char>` when `value` would exceed `split_long_lines`."""
     if not split_long_lines or \
        (len(v) + len(k) + len(m) + 2) < split_long_lines:
         if m:
@@ -174,91 +175,31 @@ def _write_split(F, m, k, v, split_long_lines, continuation_chars):
 def write_config(infofile, db, sdb=[], safe=True, rewrite_old = False,
                  split_long_lines=72, continuation_chars=None):
     """
-    Write configuration data to a file with automatic type encoding.
-
-    This function writes key-value pairs to a configuration file, automatically
-    selecting appropriate encoding based on the value type. It can preserve the
-    original file structure (comments, ordering) if a structure database is provided.
+    Write configuration data while preserving structure and inserting type modifiers.
 
     Parameters
     ----------
-    infofile : str, bytes, Path, or file object
-        The configuration file to write to. Can be:
-        - A file path (str, bytes, or Path): File will be created/overwritten
-        - A file object: Data will be written to the open file
-
-        When a path is provided, the file is created with 0o600 permissions
-        for security.
-
+    infofile : str | bytes | Path | IO
+        Destination path or open text stream; paths are created with mode 0o600.
     db : dict
-        Dictionary of key-value pairs to write. Keys must be strings without
-        '=' or '/' characters. Values are automatically encoded based on type:
-        - str (with control chars) → base64 encoded (/64s)
-        - str (plain) → plain text
-        - bool or None → repr format (/r)
-        - int → integer format (/i)
-        - float → float format (/f)
-        - bytes → base32 encoded (/32)
-        - other objects → pickled and base64 encoded (/64p)
-
-    sdb : list of tuples, optional
-        Structure database from a previous read_config() call. Used to preserve
-        the original file structure (key ordering, comments, empty lines).
-        Each tuple is (key, modifier, original_line). Default is empty list.
-
-        When provided, keys that were in the original file are written in their
-        original positions, and comments/empty lines are preserved.
-
-    safe: bool
-        if False, allow pickling
-
-    rewrite_old : bool, optional
-        If True, keys in sdb that are not in db are written back using
-        their original lines. If False (default), such keys are omitted.
-
-        Use True to preserve old configuration entries that were not modified.
-
-    split_long_lines: int, optional
-        splits long lines
-
-    continuation_chars : str, optional
-        string of characters that will be tried as "continuation character"
-
-    Returns
-    -------
-    None
-
-    Raises
-    ------
-    AssertionError
-        If any key in db contains '=' or '/' characters.
-
-    Examples
-    --------
-    Write new configuration:
-
-        >>> data = {'host': 'localhost', 'port': 8080, 'debug': True}
-        >>> write_config('config.txt', data)
-
-    Update configuration preserving structure:
-
-        >>> loaded_data, structure = read_config('config.txt')
-        >>> loaded_data['port'] = 9000
-        >>> write_config('config.txt', loaded_data, structure)
-
-    Write to file object:
-
-        >>> with open('config.txt', 'w') as f:
-        ...     write_config(f, data)
+        Mapping of keys (without '=' or '/') to Python values.
+    sdb : list[tuple], optional
+        Structure metadata from `read_config`; keeps ordering, comments, and blank lines.
+    safe : bool
+        Allow pickled `/p` and `/64p` payloads when False.
+    rewrite_old : bool
+        Re-emit keys that exist only in `sdb`.
+    split_long_lines : int | None
+        Maximum output width before `/C<char>` continuations are generated; falsy disables wrapping.
+    continuation_chars : str | None
+        Ordered list of glyphs to try for `/C<char>` markers; defaults to `funny_continuation_chars`.
 
     Notes
     -----
-    - When writing to a file path, the file is created with mode 0o600 (read/write
-      for owner only) for security.
-    - Keys are written in the order they appear in sdb first, then any new keys
-      from db are appended.
-    - Binary data is base32-encoded rather than base64 to avoid issues with
-      case-insensitive filesystems.
+    - Values are encoded automatically (/r, /i, /f, /32, /64s, /64p, etc.).
+    - `_write_split` chooses the first continuation character absent from the payload;
+      if none remain the value is written unsplit and an error is logged.
+    - Existing keys from `sdb` are emitted first, followed by any new keys in `db`.
     """
     if isinstance(infofile, (str, bytes, Path)): 
         with open(infofile,'w') as F:
@@ -329,89 +270,26 @@ def write_config(infofile, db, sdb=[], safe=True, rewrite_old = False,
 
 def read_config(infofile, safe=True):
     """
-    Read configuration data from a file with automatic type decoding.
-
-    This function reads key-value pairs from a configuration file, automatically
-    decoding values based on their type modifiers. It also returns the file
-    structure, which can be used to preserve formatting when writing updates.
+    Read configuration data and capture structural metadata for future writes.
 
     Parameters
     ----------
-    infofile : str, bytes, Path, or file object
-        The configuration file to read from. Can be:
-        - A file path (str, bytes, or Path): File will be opened and read
-        - A file object or iterable: Must yield text lines
-
-    safe: bool
-        `True` by default; if False, allow  unpickling of /p keys; set to False only for trusted input
+    infofile : str | bytes | Path | Iterable[str]
+        File path (opened automatically) or any iterable yielding text lines.
+    safe : bool
+        Allow `/p` and `/64p` unpickling when False; keep True for untrusted files.
 
     Returns
     -------
-    db : dict
-        Dictionary of decoded key-value pairs. Keys are strings, values are
-        decoded according to their type modifiers:
-        - /i → int
-        - /f → float
-        - /r → Python literal (True, False, None, etc.)
-        - /s → str (UTF-8 decoded)
-        - /b → bytes (UTF-8 encoded)
-        - /32 → base32 decoded
-        - /64 → base64 decoded
-        - /p → unpickled Python object
-        - (no modifier) → plain string
-
-    sdb : list of tuples
-        Structure database preserving the original file format. Each tuple
-        contains (key, modifier, original_line):
-        - key: The configuration key (str), or None for comments/empty lines,
-               or False for invalid lines
-        - modifier: The type modifier string (str)
-        - original_line: The complete original line including newline
-
-        Use this when calling write_config() to preserve file structure.
-
-    Examples
-    --------
-    Read configuration file:
-
-        >>> data, structure = read_config('config.txt')
-        >>> print(data['hostname'])
-        'example.com'
-        >>> print(data['port'])
-        8080
-
-    Read and update configuration:
-
-        >>> data, structure = read_config('config.txt')
-        >>> data['port'] = 9000
-        >>> data['new_key'] = 'new_value'
-        >>> write_config('config.txt', data, structure)
-
-    Read from file object:
-
-        >>> with open('config.txt') as f:
-        ...     data, structure = read_config(f)
-
-    Read from StringIO:
-
-        >>> from io import StringIO
-        >>> config_text = "host=localhost\\nport/i=8080\\n"
-        >>> data, structure = read_config(StringIO(config_text))
+    tuple(dict, list)
+        `(db, sdb)` where `db` maps keys to decoded Python values and `sdb`
+        preserves layout as `(key, modifier, raw_line)` tuples (`None` for
+        comments/blank lines, `False` for unparsable entries).
 
     Notes
     -----
-    - Comments (lines starting with #) and empty lines are preserved in sdb
-      with key=None.
-    - Invalid lines (no '=' character) are logged as warnings and stored in sdb
-      with key=False.
-    - Lines with parse errors are logged but processing continues.
-    - Modifiers are applied left-to-right, so /64p means base64 decode then unpickle.
-    - The file must be UTF-8 encoded or compatible.
-
-    See Also
-    --------
-    write_config : Write configuration data to file
-    _read_config : Internal function that does the actual parsing
+    - Modifiers are applied left-to-right (`/64p` → base64 decode then unpickle).
+    - Parsing continues after malformed lines, logging warnings so callers can react.
     """
     if isinstance(infofile, (str,bytes, Path)):
         with open(infofile) as F:
@@ -420,7 +298,26 @@ def read_config(infofile, safe=True):
     return  _read_config(infofile, safe)
 
 def _read_config(infofile, safe):
-    " infofile must iterate to text lines; returns (db, sdb) where db are the extracted key,value, sdb is the structure of the file"
+    """
+    Core parser that produces `(db, sdb)` from an iterable of text lines.
+
+    Parameters
+    ----------
+    infofile : Iterable[str]
+        Already-open file or any line iterator.
+    safe : bool
+        Allow `/p` and `/64p` unpickling when False.
+
+    Returns
+    -------
+    tuple(dict, list)
+        See `read_config` for the meaning of `db` and `sdb`.
+
+    Logs
+    ----
+    Emits warnings for malformed lines, unknown modifiers, or pickle attempts
+    when `safe=True`.
+    """
     def B(x): # to byte
         if isinstance(x, str):
             return x.encode('utf8')
