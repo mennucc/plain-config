@@ -225,6 +225,10 @@ def write_config(infofile, db, sdb=[], safe=True, rewrite_old = False):
     F = infofile
     #
     def write_k_v(k,v,F):
+        def write_split(F, m, k, v):
+            if m:
+                m = '/' + m
+            F.write(k + m + '=' + v + '\n')
         assert isinstance(k,str) and '=' not in k and '/' not in k
         if isinstance(v,str):
             if any( _is_ctrl(j) for j in v ):
@@ -233,24 +237,24 @@ def write_config(infofile, db, sdb=[], safe=True, rewrite_old = False):
                     v = v.encode('utf8')
                     v = base64.b64encode(v)
                     v = v.decode()
-                    F.write('{}/64s={}\n'.format(k, v))
+                    write_split(F, '64s', k, v)
                 else:
-                    F.write('{}/r={}\n'.format(k, repr(v)))
+                    write_split(F, 'r', k, repr(v))
             else:
-                F.write('{}={}\n'.format(k,v))
+                write_split(F,'', k,v)
         elif isinstance(v, bool) or v is None:
-            F.write('{}/r={!r}\n'.format(k,v))
+            write_split(F, 'r', k, repr(v))
         elif isinstance(v,int):
-            F.write('{}/i={}\n'.format(k,v))
+            write_split(F, 'i', k, str(v))
         elif isinstance(v,float):
-            F.write('{}/f={!r}\n'.format(k,v))
+            write_split(F, 'f', k, repr(v))
         elif isinstance(v,bytes):
-            F.write('{}/32={}\n'.format(k, base64.b32encode(v).decode('ascii')))
+            write_split(F, '32', k, base64.b32encode(v).decode('ascii'))
         elif _check_eval_safe(v):
-            F.write('{}/r={!r}\n'.format(k,v))
+            write_split(F, 'r', k, repr(v))
             # will use ast.literal_eval for decoding
         elif not safe:
-            F.write('{}/64p={}\n'.format(k, base64.b64encode(pickle.dumps(v)).decode('ascii')))
+            write_split(F, '64p', k, base64.b64encode(pickle.dumps(v)).decode('ascii'))
         else:
             raise RuntimeError('cannot write {!r}, `safe` is True'.format(v))
     #
