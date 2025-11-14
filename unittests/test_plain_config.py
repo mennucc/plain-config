@@ -74,6 +74,74 @@ class TestPlainConfig(unittest.TestCase):
 
         self.assertEqual(loaded_data, data)
 
+    def test_long_string(self):
+        """Test reading/writing long string values"""
+        config_file = self.get_test_file()
+        data = {
+            'hostname': ' example.com' * 100,
+            'username': 'admin  \tfoobar\n' * 100,
+            'some escapes': 'this | and \\ and \t and \n' * 100,
+            'path': '/var/log/app.log' * 10,
+            'pickleme': 'forward \f backward \b' * 100
+        }
+
+        plain_config.write_config(config_file, data)
+        loaded_data, structure = plain_config.read_config(config_file)
+        self.assertEqual(loaded_data, data)
+
+    def test_long_string_no_split(self):
+        """Disabling split_long_lines keeps data on a single line"""
+        config_file = self.get_test_file()
+        data = {'blob': 'abcdef' * 100}
+
+        plain_config.write_config(config_file, data, split_long_lines=0)
+
+        with open(config_file) as fh:
+            content = fh.read()
+        self.assertNotIn('/C', content)
+
+        loaded_data, _ = plain_config.read_config(config_file)
+        self.assertEqual(loaded_data, data)
+
+    def test_long_string_short_split(self):
+        """ very small split_long_lines=1"""
+        config_file = self.get_test_file()
+        data = {'blob': 'abcdef' * 100}
+
+        plain_config.write_config(config_file, data, split_long_lines=1)
+
+        with open(config_file) as fh:
+            content = fh.read()
+        self.assertIn('/C', content)
+
+        loaded_data, _ = plain_config.read_config(config_file)
+        self.assertEqual(loaded_data, data)
+
+
+    def test_long_string_custom_continuation(self):
+        """Custom continuation characters should be honored"""
+        config_file = self.get_test_file()
+        data = {
+            'notes': 'chunk-' * 40 + '|symbols|inside',
+            'other': 'x' * 10
+        }
+
+        plain_config.write_config(
+            config_file,
+            data,
+            split_long_lines=30,
+            continuation_chars='|~'
+        )
+
+        with open(config_file) as fh:
+            content = fh.read()
+        self.assertIn('/C~', content)
+        self.assertNotIn('/C|', content)  # value already contains '|', so '~' is chosen
+
+        loaded_data, _ = plain_config.read_config(config_file)
+        self.assertEqual(loaded_data, data)
+
+
     def test_integer_values(self):
         """Test integer type conversion"""
         config_file = self.get_test_file()
@@ -465,7 +533,7 @@ class TestModifierCombinations(unittest.TestCase):
         # Verify file contains /64p
         with open(config_file) as f:
             content = f.read()
-        self.assertIn('/64p=', content)
+        self.assertIn('64p=', content)
 
         # Read back
         loaded_data, _ = plain_config.read_config(config_file, safe=False)

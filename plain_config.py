@@ -133,9 +133,46 @@ def _is_ctrl_but_rnc(c):
     assert  isinstance(code, int)
     return ( (0x00 <= code <= 0x1F) and (code not in (9, 13, 10))) or (0x7F <= code <= 0x9F)
 
+funny_continuation_chars = r'\|⤸;↓↘→⟶⇒⇨⇩▼▽◢◣⤵║│┃┆┇┊┋∣⎟⎢⎥'
+
+def _write_split(F, m, k, v, split_long_lines, continuation_chars):
+    if not split_long_lines or \
+       (len(v) + len(k) + len(m) + 2) < split_long_lines:
+        if m:
+            m = '/' + m
+        F.write(k + m + '='+ v + '\n')
+        return
+    cont = None
+    for c in  continuation_chars:
+        if c not in v:
+            cont = c
+            break
+    if cont is None:
+        logger.error('cannot split %r', v)
+        if m:
+            m = '/' + m
+        F.write(k + m + '='+ v + '\n')
+        return
+    m = '/C' + cont + m
+    #pre = (len(k) + len(m) + 2)
+    F.write(k + m + '=')
+    while len(v) > split_long_lines:
+        l = split_long_lines
+        # find a nicer place where to split...
+        s = split_long_lines
+        e = split_long_lines * 5 // 6
+        if s > e and e > 3:
+            for j in range(s, e, -1):
+                if v[j] in  ' ])},;-+\n\t':
+                    l = j
+                    break
+        F.write(v[:l]+cont+'\n')
+        v = v[l:]
+    F.write(v + '\n')
 
 
-def write_config(infofile, db, sdb=[], safe=True, rewrite_old = False):
+def write_config(infofile, db, sdb=[], safe=True, rewrite_old = False,
+                 split_long_lines=72, continuation_chars=funny_continuation_chars):
     """
     Write configuration data to a file with automatic type encoding.
 
@@ -181,6 +218,12 @@ def write_config(infofile, db, sdb=[], safe=True, rewrite_old = False):
 
         Use True to preserve old configuration entries that were not modified.
 
+    split_long_lines: int, optional
+        splits long lines
+
+    continuation_chars : str, optional
+        string of characters that will be tried as "continuation character"
+
     Returns
     -------
     None
@@ -220,15 +263,22 @@ def write_config(infofile, db, sdb=[], safe=True, rewrite_old = False):
     if isinstance(infofile, (str, bytes, Path)): 
         with open(infofile,'w') as F:
             mychmod(infofile)
-            write_config(F, db, sdb, safe, rewrite_old)
+            write_config(
+                F,
+                db,
+                sdb,
+                safe,
+                rewrite_old,
+                split_long_lines,
+                continuation_chars,
+            )
         return
+    #
     F = infofile
     #
     def write_k_v(k,v,F):
         def write_split(F, m, k, v):
-            if m:
-                m = '/' + m
-            F.write(k + m + '=' + v + '\n')
+            return _write_split(F, m, k, v, split_long_lines, continuation_chars)
         assert isinstance(k,str) and '=' not in k and '/' not in k
         if isinstance(v,str):
             if any( _is_ctrl(j) for j in v ):
@@ -374,7 +424,8 @@ def _read_config(infofile, safe):
         return x
     db = {}
     sdb = []
-    for line_ in infofile:
+    I = iter(infofile)
+    for line_ in I:
         line = line_.rstrip('\n\r')
         # skip comments and empty lines
         if not line.strip() or line.strip().startswith('#'):
@@ -391,7 +442,20 @@ def _read_config(infofile, safe):
             if '/' in key:
                 key,m = key.split('/',1)
             while m:
-                if m.startswith('p'):
+                if m.startswith('C'):
+                    if len(m) < 2:
+                        logger.warning('In file %r ignored line %r', infofile, line)
+                        sdb.append( (False, False, line_) )
+                        m = False
+                        break
+                    cont = m[1]
+                    m = m[2:]
+                    while value.endswith(cont):
+                        l = next(I)
+                        line_ += l
+                        l = l.rstrip('\r\n')
+                        value = value[:-1] + l
+                elif m.startswith('p'):
                     if safe:
                         logger.error('In file %r cannot read %r, `safe` is True', infofile, line)
                         m = False

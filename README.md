@@ -106,9 +106,20 @@ When writing, `plain-config` automatically selects the appropriate type modifier
 | `/64` | `bytes` | Base64 decoded | `data/64=aGVsbG8=` |
 | `/p` | object | Unpickled Python object | `obj/p=...` |
 | `/64p` | object | Base64 + pickle (for objects that can't use `/r`) | `list/64p=...` |
+| `/C<char>` | continuation | Indicates the value was split across multiple lines using `<char>` as the continuation marker; combined with another modifier | `notes/C|r=first chunk|\nsecond chunk` |
 
 Note that pickling/unpickling , that is, the '/p' modifier, will be performed only if `safe=False` is
 passed to the calls.
+
+#### Continuation Modifier `/C`
+
+`plain-config` automatically inserts `/C<char>` when a value would exceed the configured line length (default 72 characters). The continuation character (taken from a pool of safe glyphs such as `|`, `⤸`, `→`) is appended to every intermediate chunk; on read, the parser strips the trailing marker and concatenates the following line until the marker disappears. A file might therefore contain:
+
+```
+description/C|r=first paragraph|\ncontinued text|\nfinal line
+```
+
+You rarely need to author `/C` by hand, but if you do, keep the same `<char>` throughout the wrapped value and ensure each continued line ends with that marker except the last.
 
 ### Automatic Type Selection
 
@@ -135,7 +146,7 @@ Objects that can't be represented this way (custom classes, functions, etc.) fal
 
 ## API Reference
 
-### `write_config(infofile, db, sdb=[], safe=True, rewrite_old=False)`
+### `write_config(infofile, db, sdb=[], safe=True, rewrite_old=False, split_long_lines=72, continuation_chars=None)`
 
 Write configuration data to file with automatic type encoding.
 
@@ -145,6 +156,8 @@ Write configuration data to file with automatic type encoding.
 - `sdb`: Structure database from previous `read_config()` (preserves formatting)
 - `safe`:  if `False`, allow pickling
 - `rewrite_old`: If True, preserve keys in `sdb` not present in `db`
+- `split_long_lines`: Maximum length (characters) before emitting a `/C` continuation; set to `0`/`None` to disable wrapping
+- `continuation_chars`: String of candidate continuation glyphs; defaults to an internal sequence such as `\|⤸;↓↘→⟶⇒⇨⇩▼▽◢◣⤵║│┃┆┇┊┋∣⎟⎢⎥`
 
 **Example:**
 ```python
