@@ -4,6 +4,13 @@
 # Wing project file                                              #
 ##################################################################
 [project attributes]
+debug.named-entry-points = (1,
+                            {'main': ({'run-loc-as-named-module': False},
+                                      {'auto-show': False,
+                                       'launch-id': ('project',
+        ('--help',
+         '')),
+                                       'loc': loc('plain_config.py')})})
 proj.directory-list = [{'dirloc': loc('.'),
                         'excludes': ['venv-3.14'],
                         'filter': '*',
