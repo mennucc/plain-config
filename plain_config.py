@@ -172,7 +172,7 @@ def _write_split(F, m, k, v, split_long_lines, continuation_chars):
 
 
 def write_config(infofile, db, sdb=[], safe=True, rewrite_old = False,
-                 split_long_lines=72, continuation_chars=funny_continuation_chars):
+                 split_long_lines=72, continuation_chars=None):
     """
     Write configuration data to a file with automatic type encoding.
 
@@ -273,6 +273,9 @@ def write_config(infofile, db, sdb=[], safe=True, rewrite_old = False,
                 continuation_chars,
             )
         return
+    if continuation_chars is None:
+        continuation_chars = funny_continuation_chars
+    assert isinstance(continuation_chars, str)
     #
     F = infofile
     #
