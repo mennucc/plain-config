@@ -141,6 +141,35 @@ class TestPlainConfig(unittest.TestCase):
         loaded_data, _ = plain_config.read_config(config_file)
         self.assertEqual(loaded_data, data)
 
+    def test_long_string_insufficient_custom_continuation(self):
+        """Not enough continuation_chars"""
+        config_file = self.get_test_file()
+        data = {
+            'notes': 'chunk-' * 40 + r'\-+!|symbols',
+            'other': 'x' * 10
+        }
+
+        with self.assertLogs(logger, level='ERROR') as captured:
+            plain_config.write_config(
+                config_file,
+                data,
+                split_long_lines=30,
+                continuation_chars=r'\-+!|'
+            )
+
+        with open(config_file) as fh:
+            content = fh.read()
+        
+        self.assertNotIn('/C', content)  # falls back to unsplit when no char is available
+        self.assertTrue(
+            any('cannot split' in entry for entry in captured.output),
+            msg=f"missing continuation error log: {captured.output}",
+        )
+
+        loaded_data, _ = plain_config.read_config(config_file)
+        self.assertEqual(loaded_data, data)
+
+
 
     def test_integer_values(self):
         """Test integer type conversion"""
